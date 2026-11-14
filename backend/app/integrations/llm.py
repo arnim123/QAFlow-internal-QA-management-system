@@ -1,7 +1,8 @@
 """LLM provider used for draft generation only. Not implemented.
 
 Provider, model, and credentials are settings and default to empty.
-Generated text is a draft until a human acts on it.
+Generated text is a draft until a human acts on it. A structured draft must
+pass `app.services.acceptance.accept_ai_output` before it is stored.
 """
 
 

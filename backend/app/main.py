@@ -4,14 +4,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
+from app.api.templates import template_rejected_handler
 from app.core.config import get_settings
 from app.core.logging import setup_logging
+from app.services.template_validation import TemplateRejected
 
 
 def create_app() -> FastAPI:
     setup_logging()
     settings = get_settings()
     app = FastAPI(title="QAFlow")
+    app.add_exception_handler(TemplateRejected, template_rejected_handler)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,

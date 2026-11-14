@@ -3,6 +3,10 @@
 GrokBot may retrieve an approved set only. It cannot approve, edit cases,
 see drafts, or change the master repository. Auth scheme is unset
 (see docs/OPEN_QUESTIONS.md).
+
+A result posted back to QAFlow must pass
+`app.services.acceptance.accept_execution_result` before it is stored.
+It remains an AI result until a tester confirms or overrides it.
 """
 
 

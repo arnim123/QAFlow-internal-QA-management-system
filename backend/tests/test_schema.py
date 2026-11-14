@@ -4,6 +4,7 @@ Skips when SQL Server is unreachable so image builds can run pytest without a da
 Point DATABASE_URL at the server. The test recreates the separate database qaflow_test.
 """
 
+import json
 import os
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -12,7 +13,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, select, text
+from sqlalchemy import create_engine, select, text, true
 from sqlalchemy.engine import URL, Engine, make_url
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -94,7 +95,7 @@ def test_domain_schema_happy_path() -> None:
     try:
         _recreate_database(source)
     except Exception as exc:
-        pytest.skip(f"SQL Server not reachable: {exc}")
+        pytest.skip(f"SQL Server connection failed: {exc}")
 
     test_url = source.set(database=TEST_DATABASE)
     previous = os.environ.get("DATABASE_URL")
@@ -102,6 +103,7 @@ def test_domain_schema_happy_path() -> None:
     get_settings.cache_clear()
     try:
         _alembic("upgrade", "head")
+        _assert_templates_seeded(test_url)
         engine = _engine(test_url)
         try:
             _insert_happy_path(engine)
@@ -112,6 +114,7 @@ def test_domain_schema_happy_path() -> None:
         _assert_domain_tables_absent(test_url)
         _alembic("upgrade", "head")
         _assert_roles_seeded(test_url)
+        _assert_templates_seeded(test_url)
     finally:
         if previous is None:
             os.environ.pop("DATABASE_URL", None)
@@ -206,9 +209,20 @@ def _insert_happy_path(engine: Engine) -> None:
             created_by=admin.id,
         )
         session.add(module)
-        story_template = _template(session, TemplateType.user_story, admin)
-        requirement_template = _template(session, TemplateType.requirement, admin)
-        session.flush()
+        story_template = session.scalar(
+            select(Template).where(
+                Template.template_type == TemplateType.user_story,
+                Template.is_active == true(),
+            )
+        )
+        requirement_template = session.scalar(
+            select(Template).where(
+                Template.template_type == TemplateType.requirement,
+                Template.is_active == true(),
+            )
+        )
+        assert story_template is not None
+        assert requirement_template is not None
 
         task = OdooTask(
             odoo_id=1001,
@@ -415,6 +429,11 @@ def _insert_happy_path(engine: Engine) -> None:
         assert task.row_version
         assert len(task.row_version) == 8
         assert task.estimated_hours == Decimal("3.50")
+        original_version = task.row_version
+        task.name = "Adjust stock transfer (reviewed)"
+        session.commit()
+        session.refresh(task)
+        assert task.row_version != original_version
         module = session.scalar(select(Module).where(Module.name == "Inventory"))
         assert module is not None
         assert module.functional_areas == ["Transfers"]
@@ -466,18 +485,32 @@ def _user(session: Session, email: str, name: str, role: Role, admin: User) -> U
     return user
 
 
-def _template(session: Session, template_type: TemplateType, admin: User) -> Template:
-    template = Template(
-        template_type=template_type,
-        json_schema={"type": "object"},
-        columns=["title"],
-        version=1,
-        is_active=True,
-        created_by=admin.id,
-    )
-    session.add(template)
-    session.flush()
-    return template
+def _assert_templates_seeded(url: URL) -> None:
+    engine = _engine(url)
+    try:
+        with engine.connect() as connection:
+            rows = connection.execute(
+                text("SELECT [type], version, is_active, json_schema FROM templates")
+            ).all()
+    finally:
+        engine.dispose()
+    active = {row[0] for row in rows if row[2]}
+    assert active == {member.value for member in TemplateType}
+    schemas = {}
+    for row in rows:
+        if row[1] != 1:
+            continue
+        schema = row[3]
+        if isinstance(schema, str):
+            schema = json.loads(schema)
+        schemas[row[0]] = schema
+    assert schemas["user_story"]["properties"]["as_a"]["type"] == "string"
+    assert set(schemas["execution_result"]["properties"]["result"]["enum"]) == {
+        "PASSED",
+        "FAILED",
+        "BLOCKED",
+        "ERROR",
+    }
 
 
 def _assert_rejects_duplicates(engine: Engine) -> None:

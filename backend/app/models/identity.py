@@ -38,6 +38,7 @@ class User(AuditMixin, Base):
         default=True,
         server_default=text("1"),
     )
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 class ApiKey(AuditMixin, Base):
@@ -57,3 +58,4 @@ class ApiKey(AuditMixin, Base):
     key_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     key_prefix: Mapped[str] = mapped_column(String(32), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

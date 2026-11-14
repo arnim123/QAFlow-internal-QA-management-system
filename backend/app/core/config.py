@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://localhost:8080"
 
     worker_sleep_seconds: float = 60.0
+    job_max_attempts: int = 5
+    job_backoff_base_seconds: float = 30
+    job_backoff_max_seconds: float = 3600
+
+    jwt_secret: str = ""
+    jwt_expire_minutes: int = 480
+    admin_email: str = ""
+    admin_password: str = ""
+    admin_display_name: str = "Administrator"
 
     odoo_base_url: str = ""
     odoo_database: str = ""

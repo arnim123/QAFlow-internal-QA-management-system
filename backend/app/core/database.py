@@ -34,8 +34,21 @@ def get_db() -> Generator[Session]:
     session = get_session_factory()()
     try:
         yield session
+    except Exception:
+        session.rollback()
+        raise
     finally:
         session.close()
+
+
+def dispose_engine() -> None:
+    """Drop the cached engine so a new DATABASE_URL is picked up."""
+
+    global _engine, _session_factory
+    if _engine is not None:
+        _engine.dispose()
+    _engine = None
+    _session_factory = None
 
 
 def _query_value(url: URL, key: str) -> str | None:

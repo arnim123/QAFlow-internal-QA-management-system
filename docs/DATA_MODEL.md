@@ -1,6 +1,6 @@
 # Data model
 
-SQL Server tables for QAFlow. `docs/SOP.md` is the source of truth. This schema stores the workflow. It does not implement it: there are no endpoints, and nothing here writes back to Odoo.
+SQL Server tables for QAFlow. `docs/SOP.md` is the source of truth. This schema stores the workflow. Odoo write-back is still off.
 
 Odoo-owned columns on `odoo_tasks` (priority, deadline, stage, assignee, hours, sub-status, QA checkboxes, QA cycle count, description, checklist) are a mirror. They are ordinary columns so a sync can save them. Write-back is a later job, and it stays off until that job is enabled.
 
@@ -14,6 +14,12 @@ Odoo-owned columns on `odoo_tasks` (priority, deadline, stage, assignee, hours, 
 | `row_version` | SQL Server `ROWVERSION`, used as the optimistic-concurrency token |
 
 `created_by` is null on the seeded roles and on the first user.
+
+## Identity credentials
+
+- `users.password_hash` is nullable. A human password is stored as a bcrypt hash. `executor_bot` has no password.
+- `api_keys.key_hash` is the SHA-256 hex digest of the full key. The plaintext key is shown once at creation and is not stored.
+- `api_keys.last_used_at` is set when that key authenticates. `revoked_at` disables it.
 
 ## Entities
 
@@ -71,7 +77,7 @@ erDiagram
 |---|---|
 | `roles.code` | One row per role code. The migration seeds the six codes |
 | `users.email` | One account per email |
-| `api_keys.key_hash` | A key hash is stored once. The plaintext key is not stored |
+| `api_keys.key_hash` | A key hash is stored once. The hash is SHA-256 of the full key. The plaintext is not stored |
 | `modules.name` | One master repository per module name |
 | `odoo_tasks.odoo_id` | One mirror row per Odoo task |
 | `templates (type, version)` | A template version is not inserted twice |

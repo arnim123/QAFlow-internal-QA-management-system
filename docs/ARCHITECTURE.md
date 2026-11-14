@@ -138,7 +138,7 @@ backend/app/jobs/           worker process
 backend/app/core/           settings, database, logging, process entry
 ```
 
-State changes go through `services/workflow.py`. The bootstrap records them as structured log lines. The audit table arrives with the first domain task, not before.
+State changes go through `services/workflow.py`. `record_state_change` writes a structured log line and, when a session is passed, an `audit_log` row. People sign in with email and password; the session is a JWT in an httpOnly cookie. `executor_bot` authenticates with a bearer API key.
 
 ## Persistence
 

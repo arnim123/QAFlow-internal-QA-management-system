@@ -1,1 +1,1 @@
-"""Background jobs. The worker is idle until the Odoo write-back job exists."""
+"""Background jobs. The worker claims rows. No domain handlers are registered."""

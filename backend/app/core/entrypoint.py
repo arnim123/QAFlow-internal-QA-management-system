@@ -11,8 +11,9 @@ from alembic.config import Config
 from sqlalchemy import text
 
 from app.core.config import get_settings
-from app.core.database import ensure_database, get_engine
+from app.core.database import ensure_database, get_engine, get_session_factory
 from app.core.logging import setup_logging
+from app.services.users import seed_admin
 
 logger = logging.getLogger(__name__)
 
@@ -60,10 +61,19 @@ def serve(reload: bool) -> None:
     )
 
 
+def seed() -> None:
+    session = get_session_factory()()
+    try:
+        seed_admin(session)
+    finally:
+        session.close()
+
+
 def main() -> None:
     setup_logging()
     wait_for_database()
     migrate()
+    seed()
     serve(reload="--reload" in sys.argv)
 
 
