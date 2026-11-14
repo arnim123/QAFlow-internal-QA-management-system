@@ -1,0 +1,17 @@
+---
+description: QAFlow invariants from the SOP. The SOP wins; silence is configured, not guessed.
+alwaysApply: true
+---
+
+# QAFlow invariants
+
+`docs/SOP.md` is the source of truth. If code and the SOP disagree, the SOP wins. If the SOP is silent, make the behaviour configurable and add the question to `docs/OPEN_QUESTIONS.md` instead of guessing.
+
+1. AI output is a draft until a human acts. Nothing the model produces is auto-approved.
+2. Test cases reach GrokBot only after every item has an explicit human decision and the set is approved.
+3. Master test cases are never overwritten or hard-deleted. Changes create a new version, or the case is retired.
+4. GrokBot results stay "AI result" until the tester confirms or overrides each one.
+5. Only the tester role can give final QA approval.
+6. All state changes go through `services/workflow.py` and the audit log.
+7. Odoo field names and stage ids are configurable. Never hardcode them.
+8. Routers stay thin. Business logic lives in `services/`. Every endpoint has a Pydantic schema and a test.

@@ -1,0 +1,52 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_PID: ${MSSQL_PID:-Developer}
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/1433'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+  api:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    command: ["python", "-m", "app.core.entrypoint"]
+
+  worker:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "-m", "app.jobs.worker"]
+
+  frontend:
+    build:
+      context: ./frontend
+      target: prod
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  sqldata:
